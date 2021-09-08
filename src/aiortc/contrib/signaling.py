@@ -156,9 +156,11 @@ class TcpSocketSignaling:
         self._server = None
         self._reader = None
         self._writer = None
+        self._is_connected = False
 
-    async def connect(self):
-        pass
+    async def connect(self, is_connect):
+        await self._connect(is_connect)
+        # pass
 
     async def _connect(self, server):
         if self._writer is not None:
@@ -177,10 +179,18 @@ class TcpSocketSignaling:
             )
             await connected.wait()
         else:
-            self._reader, self._writer = await asyncio.open_connection(
-                host=self._host, port=self._port
-            )
+            try:
+                self._reader, self._writer = await asyncio.open_connection(
+                    host=self._host, port=self._port
+                )
+                self._is_connected = True
+            except OSError as e:
+                print(e)
+                self._is_connected = False
 
+    def is_connected(self):
+        return self._is_connected
+    
     async def close(self):
         if self._writer is not None:
             await self.send(BYE)
@@ -200,7 +210,7 @@ class TcpSocketSignaling:
         return object_from_string(data.decode("utf8"))
 
     async def send(self, descr):
-        await self._connect(True)
+        await self._connect(False)
         data = object_to_string(descr).encode("utf8")
         self._writer.write(data + b"\n")
 
